@@ -13,7 +13,7 @@ cors_urls = ["http://localhost:8000"] # note the lack of a trailing slash
 image_directory = "/data/images"
 tv_directory = "/data/tv"
 movie_directory = "/data/movies"
-torrent_directory = "/data/torrents" # this is where MediaManager will search for the downloaded torrents and usenet files
+download_directory = "/data/downloads" # this is where MediaManager will search for the downloaded torrents and usenet files
 
 # you probaly don't need to change this
 development = false
@@ -86,9 +86,9 @@ enabled = false
 api_key = ""
 user = ""
 
-[torrents]
+[downloader]
 # qBittorrent settings
-[torrents.qbittorrent]
+[downloader.qbittorrent]
 enabled = false
 host = "http://localhost"
 port = 8080
@@ -96,7 +96,7 @@ username = "admin"
 password = "admin"
 
 # Transmission settings
-[torrents.transmission]
+[downloader.transmission]
 enabled = false
 username = "admin"
 password = "admin"
@@ -106,7 +106,7 @@ port = 9091
 path = "/transmission/rpc" # RPC request path target, usually "/transmission/rpc"
 
 # SABnzbd settings
-[torrents.sabnzbd]
+[downloader.sabnzbd]
 enabled = false
 host = "http://localhost"
 port = 8080

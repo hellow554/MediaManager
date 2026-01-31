@@ -1,8 +1,8 @@
 # Download Clients
 
-Download client settings are configured in the `[torrents]` section of your `config.toml` file. MediaManager supports both qBittorrent and SABnzbd as download clients.
+Download client settings are configured in the `[downloader]` section of your `config.toml` file. MediaManager supports both qBittorrent and SABnzbd as download clients.
 
-## qBittorrent Settings (`[torrents.qbittorrent]`)
+## qBittorrent Settings (`[downloader.qbittorrent]`)
 
 qBittorrent is a popular BitTorrent client that MediaManager can integrate with for downloading torrents.
 
@@ -17,10 +17,10 @@ qBittorrent is a popular BitTorrent client that MediaManager can integrate with 
 * `password`\
   Password for qBittorrent Web UI authentication. Default is `admin`.
 
-## Transmission Settings (`[torrents.transmission]`)
+## Transmission Settings (`[downloader.transmission]`)
 
 {% hint style="info" %}
-The downloads path in Transmission and MediaManager must be the same, i.e. the path `/data/torrents` must link to the same volume for both containers.
+The downloads path in Transmission and MediaManager must be the same, i.e. the path `/data/downloads` must link to the same volume for both containers.
 {% endhint %}
 
 Transmission is a BitTorrent client that MediaManager can integrate with for downloading torrents.
@@ -40,7 +40,7 @@ Transmission is a BitTorrent client that MediaManager can integrate with for dow
 * `path`\
   RPC request path target. Usually `/transmission/rpc`.
 
-## SABnzbd Settings (`[torrents.sabnzbd]`)
+## SABnzbd Settings (`[downloader.sabnzbd]`)
 
 SABnzbd is a Usenet newsreader that MediaManager can integrate with for downloading NZB files.
 
@@ -61,9 +61,9 @@ Here's a complete example of the download clients section in your `config.toml`:
 
 {% code title="config.toml" %}
 ```toml
-[torrents]
+[downloader]
     # qBittorrent configuration
-    [torrents.qbittorrent]
+    [downloader.qbittorrent]
     enabled = true
     host = "http://qbittorrent"
     port = 8080
@@ -71,7 +71,7 @@ Here's a complete example of the download clients section in your `config.toml`:
     password = "your_secure_password"
 
     # Transmission configuration
-    [torrents.transmission]
+    [downloader.transmission]
     enabled = false
     username = "admin"
     password = "your_secure_password"
@@ -81,7 +81,7 @@ Here's a complete example of the download clients section in your `config.toml`:
     path = "/transmission/rpc"
 
     # SABnzbd configuration
-    [torrents.sabnzbd]
+    [downloader.sabnzbd]
     enabled = false
     host = "http://sabnzbd"
     port = 8080
@@ -109,7 +109,7 @@ services:
     environment:
       - WEBUI_PORT=8080
     volumes:
-      - ./data/torrents:/downloads
+      - ./data/downloader:/downloads
     # ... other configuration ...
 
   # SABnzbd service

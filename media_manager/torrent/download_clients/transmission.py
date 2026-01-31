@@ -31,7 +31,7 @@ class TransmissionDownloadClient(AbstractDownloadClient):
     )
 
     def __init__(self) -> None:
-        self.config = MediaManagerConfig().torrents.transmission
+        self.config = MediaManagerConfig().downloader.transmission
         try:
             self._client = transmission_rpc.Client(
                 host=self.config.host,
@@ -56,7 +56,7 @@ class TransmissionDownloadClient(AbstractDownloadClient):
         """
         torrent_hash = get_torrent_hash(torrent=indexer_result)
         download_dir = (
-            MediaManagerConfig().misc.torrent_directory / indexer_result.title
+            MediaManagerConfig().misc.download_directory / indexer_result.title
         )
         try:
             self._client.add_torrent(

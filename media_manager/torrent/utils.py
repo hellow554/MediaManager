@@ -62,7 +62,7 @@ def extract_archives(files: list) -> None:
 
 
 def get_torrent_filepath(torrent: Torrent) -> Path:
-    return MediaManagerConfig().misc.torrent_directory / torrent.title
+    return MediaManagerConfig().misc.download_directory / torrent.title
 
 
 def import_file(target_file: Path, source_file: Path) -> None:
@@ -132,7 +132,7 @@ def get_torrent_hash(torrent: IndexerQueryResult) -> str:
     :return: The hash of the torrent.
     """
     torrent_filepath = (
-        MediaManagerConfig().misc.torrent_directory / f"{torrent.title}.torrent"
+        MediaManagerConfig().misc.download_directory / f"{torrent.title}.torrent"
     )
     if torrent_filepath.exists():
         log.warning(f"Torrent file already exists at: {torrent_filepath}")

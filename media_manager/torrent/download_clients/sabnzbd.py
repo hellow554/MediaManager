@@ -28,7 +28,7 @@ class SabnzbdDownloadClient(AbstractDownloadClient):
     UNKNOWN_STATE = ("Unknown",)
 
     def __init__(self) -> None:
-        self.config = MediaManagerConfig().torrents.sabnzbd
+        self.config = MediaManagerConfig().downloader.sabnzbd
         self.client = sabnzbd_api.SabnzbdClient(
             host=self.config.host,
             port=str(self.config.port),

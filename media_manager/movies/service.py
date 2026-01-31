@@ -170,7 +170,7 @@ class MovieService:
                         self.torrent_service.cancel_download(
                             torrent=torrent, delete_files=True
                         )
-                        log.info(f"Deleted torrent: {torrent.torrent_title}")
+                        log.info(f"Deleted torrent: {torrent.title}")
                     except Exception as e:
                         log.warning(f"Failed to delete torrent {torrent.hash}: {e}")
 

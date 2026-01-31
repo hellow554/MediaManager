@@ -86,7 +86,7 @@ services:
       - 6881:6881/udp
     restart: unless-stopped
     volumes:
-      - ./res/torrents:/download
+      - ./res/downloads:/download
       - ./res/qbittorrent:/config
 #  transmission:
 #    image: lscr.io/linuxserver/transmission:latest
@@ -99,7 +99,7 @@ services:
 #      - PASS=admin
 #    volumes:
 #      - ./res/transmission:/config
-#      - ./res/torrents:/data/torrents
+#      - ./res/downloads:/data/torrents
 #    ports:
 #      - 9091:9091
 #    restart: unless-stopped
@@ -126,7 +126,7 @@ services:
 #      - TZ=Etc/UTC
 #    volumes:
 #      - ./res/sabnzbd:/config
-#      - ./res/torrents:/downloads
+#      - ./res/downloads:/downloads
 #    ports:
 #      - 8081:8080
 #    restart: unless-stopped
@@ -140,7 +140,7 @@ services:
 #      - AUTO_UPDATE=true
 #    volumes:
 #      - ./res/jackett/data:/config
-#      - ./res/jackett/torrents:/downloads
+#      - ./res/jackett/downloads:/downloads
 #    ports:
 #      - 9117:9117
 #    restart: unless-stopped

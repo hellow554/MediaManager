@@ -39,7 +39,7 @@ class BasicConfig(BaseSettings):
     image_directory: Path = Path(__file__).parent.parent / "data" / "images"
     tv_directory: Path = Path(__file__).parent.parent / "data" / "tv"
     movie_directory: Path = Path(__file__).parent.parent / "data" / "movies"
-    torrent_directory: Path = Path(__file__).parent.parent / "data" / "torrents"
+    download_directory: Path = Path(__file__).parent.parent / "data" / "downloads"
 
     frontend_url: AnyHttpUrl = AnyHttpUrl("http://localhost:8000")
     cors_urls: list[str] = []

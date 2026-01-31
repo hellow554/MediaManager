@@ -44,7 +44,7 @@ class QbittorrentDownloadClient(AbstractDownloadClient):
     UNKNOWN_STATE = ("unknown",)
 
     def __init__(self) -> None:
-        self.config = MediaManagerConfig().torrents.qbittorrent
+        self.config = MediaManagerConfig().downloader.qbittorrent
         self.api_client = qbittorrentapi.Client(
             host=self.config.host,
             port=self.config.port,
