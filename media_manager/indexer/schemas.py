@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 import pydantic
 from pydantic import BaseModel, ConfigDict, computed_field
 
-from media_manager.torrent.models import Quality
+from media_manager.downloader.models import Quality
 
 IndexerQueryResultId = typing.NewType("IndexerQueryResultId", UUID)
 
@@ -13,7 +13,9 @@ IndexerQueryResultId = typing.NewType("IndexerQueryResultId", UUID)
 class IndexerQueryResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: IndexerQueryResultId = pydantic.Field(default_factory=lambda: IndexerQueryResultId(uuid4()))
+    id: IndexerQueryResultId = pydantic.Field(
+        default_factory=lambda: IndexerQueryResultId(uuid4())
+    )
     title: str
     download_url: str = pydantic.Field(
         exclude=True,

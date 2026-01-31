@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from media_manager.auth.db import User
 from media_manager.database import Base
-from media_manager.torrent.models import Quality
+from media_manager.downloader.models import Quality
 
 
 class Movie(Base):

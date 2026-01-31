@@ -13,10 +13,10 @@ from pydantic_settings import (
 
 from media_manager.auth.config import AuthConfig
 from media_manager.database.config import DbConfig
+from media_manager.downloader.config import DownloaderConfig
 from media_manager.indexer.config import IndexerConfig
 from media_manager.metadataProvider.config import MetadataProviderConfig
 from media_manager.notification.config import NotificationConfig
-from media_manager.torrent.config import DownloaderConfig
 
 log = logging.getLogger(__name__)
 

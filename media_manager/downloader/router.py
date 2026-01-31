@@ -3,12 +3,12 @@ from fastapi.exceptions import HTTPException
 from fastapi.params import Depends
 
 from media_manager.auth.users import current_active_user, current_superuser
-from media_manager.torrent.dependencies import (
+from media_manager.downloader.dependencies import (
     torrent_dep,
     torrent_repository_dep,
     torrent_service_dep,
 )
-from media_manager.torrent.schemas import Torrent, TorrentStatus
+from media_manager.downloader.schemas import Torrent, TorrentStatus
 
 router = APIRouter()
 

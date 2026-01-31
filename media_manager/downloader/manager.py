@@ -2,16 +2,16 @@ import logging
 from enum import Enum
 
 from media_manager.config import MediaManagerConfig
-from media_manager.indexer.schemas import IndexerQueryResult
-from media_manager.torrent.download_clients.abstract_download_client import (
+from media_manager.downloader.clients.abstract_download_client import (
     AbstractDownloadClient,
 )
-from media_manager.torrent.download_clients.qbittorrent import QbittorrentDownloadClient
-from media_manager.torrent.download_clients.sabnzbd import SabnzbdDownloadClient
-from media_manager.torrent.download_clients.transmission import (
+from media_manager.downloader.clients.qbittorrent import QbittorrentDownloadClient
+from media_manager.downloader.clients.sabnzbd import SabnzbdDownloadClient
+from media_manager.downloader.clients.transmission import (
     TransmissionDownloadClient,
 )
-from media_manager.torrent.schemas import Torrent, TorrentStatus
+from media_manager.downloader.schemas import Torrent, TorrentStatus
+from media_manager.indexer.schemas import IndexerQueryResult
 
 log = logging.getLogger(__name__)
 

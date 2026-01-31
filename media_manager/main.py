@@ -10,16 +10,11 @@ from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse, RedirectResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+import media_manager.downloader.router as torrent_router
 import media_manager.movies.router as movies_router
-import media_manager.torrent.router as torrent_router
 import media_manager.tv.router as tv_router
-from media_manager.auth.router import (
-    auth_metadata_router,
-    get_openid_router,
-)
-from media_manager.auth.router import (
-    users_router as custom_users_router,
-)
+from media_manager.auth.router import auth_metadata_router, get_openid_router
+from media_manager.auth.router import users_router as custom_users_router
 from media_manager.auth.schemas import UserCreate, UserRead, UserUpdate
 from media_manager.auth.users import (
     bearer_auth_backend,

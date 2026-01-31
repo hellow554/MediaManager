@@ -1,19 +1,14 @@
 from sqlalchemy import delete, func, select
-from sqlalchemy.exc import (
-    IntegrityError,
-    SQLAlchemyError,
-)
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
+from media_manager.downloader.models import Torrent
+from media_manager.downloader.schemas import Torrent as TorrentSchema
+from media_manager.downloader.schemas import TorrentId
 from media_manager.exceptions import ConflictError, NotFoundError
-from media_manager.torrent.models import Torrent
-from media_manager.torrent.schemas import Torrent as TorrentSchema
-from media_manager.torrent.schemas import TorrentId
 from media_manager.tv import log
 from media_manager.tv.models import Episode, Season, SeasonFile, SeasonRequest, Show
-from media_manager.tv.schemas import (
-    Episode as EpisodeSchema,
-)
+from media_manager.tv.schemas import Episode as EpisodeSchema
 from media_manager.tv.schemas import (
     EpisodeId,
     SeasonId,
@@ -21,21 +16,11 @@ from media_manager.tv.schemas import (
     SeasonRequestId,
     ShowId,
 )
-from media_manager.tv.schemas import (
-    RichSeasonRequest as RichSeasonRequestSchema,
-)
-from media_manager.tv.schemas import (
-    Season as SeasonSchema,
-)
-from media_manager.tv.schemas import (
-    SeasonFile as SeasonFileSchema,
-)
-from media_manager.tv.schemas import (
-    SeasonRequest as SeasonRequestSchema,
-)
-from media_manager.tv.schemas import (
-    Show as ShowSchema,
-)
+from media_manager.tv.schemas import RichSeasonRequest as RichSeasonRequestSchema
+from media_manager.tv.schemas import Season as SeasonSchema
+from media_manager.tv.schemas import SeasonFile as SeasonFileSchema
+from media_manager.tv.schemas import SeasonRequest as SeasonRequestSchema
+from media_manager.tv.schemas import Show as ShowSchema
 
 
 class TvRepository:

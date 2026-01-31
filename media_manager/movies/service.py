@@ -8,6 +8,22 @@ from sqlalchemy.orm import Session
 
 from media_manager.config import MediaManagerConfig
 from media_manager.database import SessionLocal, get_session
+from media_manager.downloader.repository import TorrentRepository
+from media_manager.downloader.schemas import (
+    Quality,
+    QualityStrings,
+    Torrent,
+    TorrentStatus,
+)
+from media_manager.downloader.service import TorrentService
+from media_manager.downloader.utils import (
+    extract_external_id_from_string,
+    get_files_for_import,
+    get_importable_media_directories,
+    import_file,
+    remove_special_characters,
+    remove_special_chars_and_parentheses,
+)
 from media_manager.exceptions import InvalidConfigError, NotFoundError
 from media_manager.indexer.repository import IndexerRepository
 from media_manager.indexer.schemas import IndexerQueryResult, IndexerQueryResultId
@@ -35,22 +51,6 @@ from media_manager.movies.schemas import (
 from media_manager.notification.repository import NotificationRepository
 from media_manager.notification.service import NotificationService
 from media_manager.schemas import MediaImportSuggestion
-from media_manager.torrent.repository import TorrentRepository
-from media_manager.torrent.schemas import (
-    Quality,
-    QualityStrings,
-    Torrent,
-    TorrentStatus,
-)
-from media_manager.torrent.service import TorrentService
-from media_manager.torrent.utils import (
-    extract_external_id_from_string,
-    get_files_for_import,
-    get_importable_media_directories,
-    import_file,
-    remove_special_characters,
-    remove_special_chars_and_parentheses,
-)
 
 
 class MovieService:
@@ -98,9 +98,7 @@ class MovieService:
         """
         return self.movie_repository.add_movie_request(movie_request=movie_request)
 
-    def get_movie_request_by_id(
-        self, movie_request_id: MovieRequestId
-    ) -> MovieRequest:
+    def get_movie_request_by_id(self, movie_request_id: MovieRequestId) -> MovieRequest:
         """
         Get a movie request by its ID.
 
@@ -786,12 +784,14 @@ def auto_download_all_approved_movie_requests() -> None:
     movie_repository = MovieRepository(db=db)
     torrent_service = TorrentService(torrent_repository=TorrentRepository(db=db))
     indexer_service = IndexerService(indexer_repository=IndexerRepository(db=db))
-    notification_service = NotificationService(notification_repository=NotificationRepository(db=db))
+    notification_service = NotificationService(
+        notification_repository=NotificationRepository(db=db)
+    )
     movie_service = MovieService(
         movie_repository=movie_repository,
         torrent_service=torrent_service,
         indexer_service=indexer_service,
-        notification_service=notification_service
+        notification_service=notification_service,
     )
 
     log.info("Auto downloading all approved movie requests")
@@ -821,7 +821,9 @@ def import_all_movie_torrents() -> None:
         movie_repository = MovieRepository(db=db)
         torrent_service = TorrentService(torrent_repository=TorrentRepository(db=db))
         indexer_service = IndexerService(indexer_repository=IndexerRepository(db=db))
-        notification_service = NotificationService(notification_repository=NotificationRepository(db=db))
+        notification_service = NotificationService(
+            notification_repository=NotificationRepository(db=db)
+        )
         movie_service = MovieService(
             movie_repository=movie_repository,
             torrent_service=torrent_service,
@@ -860,7 +862,9 @@ def update_all_movies_metadata() -> None:
             movie_repository=movie_repository,
             torrent_service=TorrentService(torrent_repository=TorrentRepository(db=db)),
             indexer_service=IndexerService(indexer_repository=IndexerRepository(db=db)),
-            notification_service=NotificationService(notification_repository=NotificationRepository(db=db))
+            notification_service=NotificationService(
+                notification_repository=NotificationRepository(db=db)
+            ),
         )
 
         log.info("Updating metadata for all movies")

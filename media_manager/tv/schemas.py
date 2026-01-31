@@ -5,8 +5,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from media_manager.auth.schemas import UserRead
-from media_manager.torrent.models import Quality
-from media_manager.torrent.schemas import TorrentId, TorrentStatus
+from media_manager.downloader.models import Quality
+from media_manager.downloader.schemas import TorrentId, TorrentStatus
 
 ShowId = typing.NewType("ShowId", UUID)
 SeasonId = typing.NewType("SeasonId", UUID)

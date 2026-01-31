@@ -1,6 +1,9 @@
 from sqlalchemy import delete, select
 
 from media_manager.database import DbSessionDependency
+from media_manager.downloader.models import Torrent
+from media_manager.downloader.schemas import Torrent as TorrentSchema
+from media_manager.downloader.schemas import TorrentId
 from media_manager.exceptions import NotFoundError
 from media_manager.movies.models import Movie, MovieFile
 from media_manager.movies.schemas import (
@@ -9,9 +12,6 @@ from media_manager.movies.schemas import (
 from media_manager.movies.schemas import (
     MovieFile as MovieFileSchema,
 )
-from media_manager.torrent.models import Torrent
-from media_manager.torrent.schemas import Torrent as TorrentSchema
-from media_manager.torrent.schemas import TorrentId
 from media_manager.tv.models import Season, SeasonFile, Show
 from media_manager.tv.schemas import SeasonFile as SeasonFileSchema
 from media_manager.tv.schemas import Show as ShowSchema
@@ -87,7 +87,9 @@ class TorrentRepository:
             return None
         return MovieSchema.model_validate(result)
 
-    def get_movie_files_of_torrent(self, torrent_id: TorrentId) -> list[MovieFileSchema]:
+    def get_movie_files_of_torrent(
+        self, torrent_id: TorrentId
+    ) -> list[MovieFileSchema]:
         stmt = select(MovieFile).where(MovieFile.torrent_id == torrent_id)
         result = self.db.execute(stmt).scalars().all()
         return [MovieFileSchema.model_validate(movie_file) for movie_file in result]

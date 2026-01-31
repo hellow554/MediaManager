@@ -5,10 +5,7 @@ sys.path = ["", "..", *sys.path[1:]]
 
 from logging.config import fileConfig  # noqa: E402
 
-from sqlalchemy import (  # noqa: E402
-    engine_from_config,
-    pool,
-)
+from sqlalchemy import engine_from_config, pool  # noqa: E402
 
 from alembic import context  # noqa: E402
 
@@ -29,10 +26,10 @@ if config.config_file_name is not None:
 from media_manager.auth.db import OAuthAccount, User  # noqa: E402
 from media_manager.config import MediaManagerConfig  # noqa: E402
 from media_manager.database import Base  # noqa: E402
+from media_manager.downloader.models import Torrent  # noqa: E402
 from media_manager.indexer.models import IndexerQueryResult  # noqa: E402
 from media_manager.movies.models import Movie, MovieFile, MovieRequest  # noqa: E402
 from media_manager.notification.models import Notification  # noqa: E402
-from media_manager.torrent.models import Torrent  # noqa: E402
 from media_manager.tv.models import (  # noqa: E402
     Episode,
     Season,

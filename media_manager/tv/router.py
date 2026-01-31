@@ -7,22 +7,15 @@ from media_manager.auth.db import User
 from media_manager.auth.schemas import UserRead
 from media_manager.auth.users import current_active_user, current_superuser
 from media_manager.config import LibraryItem, MediaManagerConfig
+from media_manager.downloader.schemas import Torrent
+from media_manager.downloader.utils import get_importable_media_directories
 from media_manager.exceptions import MediaAlreadyExistsError, NotFoundError
-from media_manager.indexer.schemas import (
-    IndexerQueryResult,
-    IndexerQueryResultId,
-)
+from media_manager.indexer.schemas import IndexerQueryResult, IndexerQueryResultId
 from media_manager.metadataProvider.dependencies import metadata_provider_dep
 from media_manager.metadataProvider.schemas import MetaDataProviderSearchResult
 from media_manager.schemas import MediaImportSuggestion
-from media_manager.torrent.schemas import Torrent
-from media_manager.torrent.utils import get_importable_media_directories
 from media_manager.tv import log
-from media_manager.tv.dependencies import (
-    season_dep,
-    show_dep,
-    tv_service_dep,
-)
+from media_manager.tv.dependencies import season_dep, show_dep, tv_service_dep
 from media_manager.tv.schemas import (
     CreateSeasonRequest,
     PublicSeasonFile,
@@ -94,7 +87,9 @@ def get_all_importable_shows(
     dependencies=[Depends(current_superuser)],
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def import_detected_show(tv_service: tv_service_dep, tv_show: show_dep, directory: str) -> None:
+def import_detected_show(
+    tv_service: tv_service_dep, tv_show: show_dep, directory: str
+) -> None:
     """
     Import a detected show from the specified directory into the library.
     """
@@ -145,7 +140,7 @@ def add_a_show(
     Add a new show to the library.
     """
     try:
-         show = tv_service.add_show(
+        show = tv_service.add_show(
             external_id=show_id,
             metadata_provider=metadata_provider,
             language=language,

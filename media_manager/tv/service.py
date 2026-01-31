@@ -8,6 +8,22 @@ from sqlalchemy.exc import IntegrityError
 
 from media_manager.config import MediaManagerConfig
 from media_manager.database import get_session
+from media_manager.downloader.repository import TorrentRepository
+from media_manager.downloader.schemas import (
+    Quality,
+    QualityStrings,
+    Torrent,
+    TorrentStatus,
+)
+from media_manager.downloader.service import TorrentService
+from media_manager.downloader.utils import (
+    extract_external_id_from_string,
+    get_files_for_import,
+    get_importable_media_directories,
+    import_file,
+    remove_special_characters,
+    remove_special_chars_and_parentheses,
+)
 from media_manager.exceptions import InvalidConfigError, NotFoundError
 from media_manager.indexer.repository import IndexerRepository
 from media_manager.indexer.schemas import IndexerQueryResult, IndexerQueryResultId
@@ -22,27 +38,9 @@ from media_manager.metadataProvider.tvdb import TvdbMetadataProvider
 from media_manager.notification.repository import NotificationRepository
 from media_manager.notification.service import NotificationService
 from media_manager.schemas import MediaImportSuggestion
-from media_manager.torrent.repository import TorrentRepository
-from media_manager.torrent.schemas import (
-    Quality,
-    QualityStrings,
-    Torrent,
-    TorrentStatus,
-)
-from media_manager.torrent.service import TorrentService
-from media_manager.torrent.utils import (
-    extract_external_id_from_string,
-    get_files_for_import,
-    get_importable_media_directories,
-    import_file,
-    remove_special_characters,
-    remove_special_chars_and_parentheses,
-)
 from media_manager.tv import log
 from media_manager.tv.repository import TvRepository
-from media_manager.tv.schemas import (
-    Episode as EpisodeSchema,
-)
+from media_manager.tv.schemas import Episode as EpisodeSchema
 from media_manager.tv.schemas import (
     EpisodeId,
     PublicSeason,
@@ -967,12 +965,14 @@ def auto_download_all_approved_season_requests() -> None:
         tv_repository = TvRepository(db=db)
         torrent_service = TorrentService(torrent_repository=TorrentRepository(db=db))
         indexer_service = IndexerService(indexer_repository=IndexerRepository(db=db))
-        notification_service = NotificationService(notification_repository=NotificationRepository(db=db))
+        notification_service = NotificationService(
+            notification_repository=NotificationRepository(db=db)
+        )
         tv_service = TvService(
             tv_repository=tv_repository,
             torrent_service=torrent_service,
             indexer_service=indexer_service,
-            notification_service=notification_service
+            notification_service=notification_service,
         )
 
         log.info("Auto downloading all approved season requests")
@@ -1004,12 +1004,14 @@ def import_all_show_torrents() -> None:
         tv_repository = TvRepository(db=db)
         torrent_service = TorrentService(torrent_repository=TorrentRepository(db=db))
         indexer_service = IndexerService(indexer_repository=IndexerRepository(db=db))
-        notification_service = NotificationService(notification_repository=NotificationRepository(db=db))
+        notification_service = NotificationService(
+            notification_repository=NotificationRepository(db=db)
+        )
         tv_service = TvService(
             tv_repository=tv_repository,
             torrent_service=torrent_service,
             indexer_service=indexer_service,
-            notification_service=notification_service
+            notification_service=notification_service,
         )
         log.info("Importing all torrents")
         torrents = torrent_service.get_all_torrents()
@@ -1042,7 +1044,9 @@ def update_all_non_ended_shows_metadata() -> None:
             tv_repository=tv_repository,
             torrent_service=TorrentService(torrent_repository=TorrentRepository(db=db)),
             indexer_service=IndexerService(indexer_repository=IndexerRepository(db=db)),
-            notification_service=NotificationService(notification_repository=NotificationRepository(db=db))
+            notification_service=NotificationService(
+                notification_repository=NotificationRepository(db=db)
+            ),
         )
 
         log.info("Updating metadata for all non-ended shows")

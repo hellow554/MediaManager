@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Path
 
 from media_manager.database import DbSessionDependency
+from media_manager.downloader.dependencies import torrent_service_dep
 from media_manager.exceptions import NotFoundError
 from media_manager.indexer.dependencies import indexer_service_dep
 from media_manager.notification.dependencies import notification_service_dep
-from media_manager.torrent.dependencies import torrent_service_dep
 from media_manager.tv.repository import TvRepository
 from media_manager.tv.schemas import Season, SeasonId, Show, ShowId
 from media_manager.tv.service import TvService

@@ -4,10 +4,10 @@ from fastapi import Depends
 from fastapi.exceptions import HTTPException
 
 from media_manager.database import DbSessionDependency
+from media_manager.downloader.repository import TorrentRepository
+from media_manager.downloader.schemas import Torrent, TorrentId
+from media_manager.downloader.service import TorrentService
 from media_manager.exceptions import NotFoundError
-from media_manager.torrent.repository import TorrentRepository
-from media_manager.torrent.schemas import Torrent, TorrentId
-from media_manager.torrent.service import TorrentService
 
 
 def get_torrent_repository(db: DbSessionDependency) -> TorrentRepository:

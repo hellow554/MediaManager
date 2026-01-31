@@ -12,9 +12,9 @@ import requests
 from requests.exceptions import InvalidSchema
 
 from media_manager.config import MediaManagerConfig
+from media_manager.downloader.schemas import Torrent
 from media_manager.indexer.schemas import IndexerQueryResult
 from media_manager.indexer.utils import follow_redirects_to_final_torrent_url
-from media_manager.torrent.schemas import Torrent
 
 log = logging.getLogger(__name__)
 

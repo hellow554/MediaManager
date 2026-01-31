@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from media_manager.auth.schemas import UserRead
 from media_manager.auth.users import current_active_user, current_superuser
 from media_manager.config import LibraryItem, MediaManagerConfig
+from media_manager.downloader.schemas import Torrent
+from media_manager.downloader.utils import get_importable_media_directories
 from media_manager.exceptions import ConflictError, NotFoundError
 from media_manager.indexer.schemas import (
     IndexerQueryResult,
@@ -30,8 +32,6 @@ from media_manager.movies.schemas import (
     RichMovieTorrent,
 )
 from media_manager.schemas import MediaImportSuggestion
-from media_manager.torrent.schemas import Torrent
-from media_manager.torrent.utils import get_importable_media_directories
 
 router = APIRouter()
 
