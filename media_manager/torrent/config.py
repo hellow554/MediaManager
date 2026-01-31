@@ -33,7 +33,7 @@ class SabnzbdConfig(BaseSettings):
     base_path: str = "/api"
 
 
-class TorrentConfig(BaseSettings):
+class DownloaderConfig(BaseSettings):
     qbittorrent: QbittorrentConfig = QbittorrentConfig()
     transmission: TransmissionConfig = TransmissionConfig()
     sabnzbd: SabnzbdConfig = SabnzbdConfig()

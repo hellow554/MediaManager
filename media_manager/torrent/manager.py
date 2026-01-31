@@ -33,7 +33,7 @@ class DownloadManager:
     def __init__(self) -> None:
         self._torrent_client: AbstractDownloadClient | None = None
         self._usenet_client: AbstractDownloadClient | None = None
-        self.config = MediaManagerConfig().torrents
+        self.config = MediaManagerConfig().downloader
         self._initialize_clients()
 
     def _initialize_clients(self) -> None:

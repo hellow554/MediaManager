@@ -16,7 +16,7 @@ from media_manager.database.config import DbConfig
 from media_manager.indexer.config import IndexerConfig
 from media_manager.metadataProvider.config import MetadataProviderConfig
 from media_manager.notification.config import NotificationConfig
-from media_manager.torrent.config import TorrentConfig
+from media_manager.torrent.config import DownloaderConfig
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class MediaManagerConfig(BaseSettings):
     It combines the BasicConfig with any additional configurations needed.
     """
     misc: BasicConfig = BasicConfig()
-    torrents: TorrentConfig = TorrentConfig()
+    downloader: DownloaderConfig = DownloaderConfig()
     notifications: NotificationConfig = NotificationConfig()
     metadata: MetadataProviderConfig = MetadataProviderConfig()
     indexers: IndexerConfig = IndexerConfig()
