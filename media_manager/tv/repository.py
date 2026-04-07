@@ -1,9 +1,7 @@
 from sqlalchemy import delete, func, select
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from media_manager.exceptions import (
-    ConflictError,
     EpisodeNotFoundError,
     ExternalShowNotFoundError,
     SeasonNotFoundError,
@@ -147,18 +145,11 @@ class TvRepository:
             )
             self.db.add(db_show)
 
-        try:
-            self.db.commit()
-            self.db.refresh(db_show)
-            return ShowSchema.model_validate(db_show)
-        except IntegrityError as e:
-            self.db.rollback()
-            msg = f"Show with this primary key or unique constraint violation: {e.orig}"
-            raise ConflictError(msg) from e
-        except SQLAlchemyError:
-            self.db.rollback()
-            log.exception(f"Database error while saving show {show.name}")
-            raise
+        with self.db.begin():
+            pass  # Commit the transaction, without actually doing anything
+
+        self.db.refresh(db_show)
+        return ShowSchema.model_validate(db_show)
 
     def delete_show(self, show_id: ShowId) -> None:
         """
@@ -167,16 +158,11 @@ class TvRepository:
         :param show_id: The ID of the show to delete.
         :raises ShowNotFoundError: If the show with the given ID is not found.
         """
-        try:
+        with self.db.begin():
             show = self.db.get(Show, show_id)
             if not show:
                 raise ShowNotFoundError(show_id)
             self.db.delete(show)
-            self.db.commit()
-        except SQLAlchemyError:
-            self.db.rollback()
-            log.exception(f"Database error while deleting show {show_id}")
-            raise
 
     def get_season(self, season_id: SeasonId) -> SeasonSchema:
         """
@@ -239,22 +225,12 @@ class TvRepository:
         :param episode_file: The EpisodeFile object to add.
         :return: The added EpisodeFile object.
         :raises IntegrityError: If the record violates constraints.
-        :raises SQLAlchemyError: If a database error occurs.
         """
         db_model = EpisodeFile(**episode_file.model_dump())
-        try:
+        with self.db.begin():
             self.db.add(db_model)
-            self.db.commit()
-            self.db.refresh(db_model)
-            return EpisodeFileSchema.model_validate(db_model)
-        except IntegrityError as e:
-            self.db.rollback()
-            log.error(f"Integrity error while adding episode file: {e}")
-            raise
-        except SQLAlchemyError as e:
-            self.db.rollback()
-            log.error(f"Database error while adding episode file: {e}")
-            raise
+        self.db.refresh(db_model)
+        return EpisodeFileSchema.model_validate(db_model)
 
     def remove_episode_files_by_torrent_id(self, torrent_id: TorrentId) -> int:
         """
@@ -262,18 +238,10 @@ class TvRepository:
 
         :param torrent_id: The ID of the torrent whose episode files are to be removed.
         :return: The number of episode files removed.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
+        with self.db.begin():
             stmt = delete(EpisodeFile).where(EpisodeFile.torrent_id == torrent_id)
             result = self.db.execute(stmt)
-            self.db.commit()
-        except SQLAlchemyError:
-            self.db.rollback()
-            log.exception(
-                f"Database error removing episode files for torrent_id {torrent_id}"
-            )
-            raise
         return result.rowcount
 
     def set_show_library(self, show_id: ShowId, library: str) -> None:
@@ -283,18 +251,12 @@ class TvRepository:
         :param show_id: The ID of the show to update.
         :param library: The library path to set for the show.
         :raises ShowNotFoundError: If the show with the given ID is not found.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
+        with self.db.begin():
             show = self.db.get(Show, show_id)
             if not show:
                 raise ShowNotFoundError(show_id)
             show.library = library
-            self.db.commit()
-        except SQLAlchemyError:
-            self.db.rollback()
-            log.exception(f"Database error setting library for show {show_id}")
-            raise
 
     def get_episode_files_by_season_id(
         self, season_id: SeasonId
@@ -456,8 +418,8 @@ class TvRepository:
             ],
         )
 
-        self.db.add(db_season)
-        self.db.commit()
+        with self.db.begin():
+            self.db.add(db_season)
         self.db.refresh(db_season)
         return SeasonSchema.model_validate(db_season)
 
@@ -494,8 +456,8 @@ class TvRepository:
             title=episode_data.title,
         )
 
-        self.db.add(db_episode)
-        self.db.commit()
+        with self.db.begin():
+            self.db.add(db_episode)
         self.db.refresh(db_episode)
         return EpisodeSchema.model_validate(db_episode)
 
@@ -617,5 +579,5 @@ class TvRepository:
         if updated:
             self.db.commit()
             self.db.refresh(db_episode)
-            log.info(f"Updating existing episode {db_episode.number}")
+            log.debug(f"Updating existing episode {db_episode.number}")
         return EpisodeSchema.model_validate(db_episode)
