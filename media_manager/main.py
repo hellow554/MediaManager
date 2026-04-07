@@ -9,8 +9,6 @@ from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from psycopg.errors import UniqueViolation
-from sqlalchemy.exc import IntegrityError
 from starlette.responses import FileResponse, RedirectResponse
 from taskiq.receiver import Receiver
 from taskiq_fastapi import populate_dependency_context
@@ -34,17 +32,7 @@ from media_manager.auth.users import (
 )
 from media_manager.config import MediaManagerConfig
 from media_manager.database import init_engine
-from media_manager.exceptions import (
-    ConflictError,
-    InvalidConfigError,
-    MediaAlreadyExistsError,
-    NotFoundError,
-    conflict_error_handler,
-    invalid_config_error_exception_handler,
-    media_already_exists_exception_handler,
-    not_found_error_exception_handler,
-    sqlalchemy_integrity_error_handler,
-)
+from media_manager.exceptions import register_exception_handlers
 from media_manager.filesystem_checks import run_filesystem_checks
 from media_manager.logging import LOGGING_CONFIG, setup_logging
 from media_manager.notification.router import router as notification_router
@@ -231,15 +219,7 @@ async def not_found_handler(request: Request, _exc: Exception) -> Response:
     return Response(content="Not Found", status_code=404)
 
 
-# Register exception handlers for custom exceptions
-app.add_exception_handler(NotFoundError, not_found_error_exception_handler)
-app.add_exception_handler(
-    MediaAlreadyExistsError, media_already_exists_exception_handler
-)
-app.add_exception_handler(InvalidConfigError, invalid_config_error_exception_handler)
-app.add_exception_handler(IntegrityError, sqlalchemy_integrity_error_handler)
-app.add_exception_handler(UniqueViolation, sqlalchemy_integrity_error_handler)
-app.add_exception_handler(ConflictError, conflict_error_handler)
+register_exception_handlers(app)
 
 if __name__ == "__main__":
     uvicorn.run(

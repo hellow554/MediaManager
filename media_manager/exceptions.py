@@ -145,3 +145,4 @@ def register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(IntegrityError, sqlalchemy_integrity_error_handler)
     app.add_exception_handler(UniqueViolation, sqlalchemy_integrity_error_handler)
+    app.add_exception_handler(ConflictError, conflict_error_handler)
