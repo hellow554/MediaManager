@@ -881,7 +881,7 @@ class TvService:
         log.debug(f"Fetched fresh metadata for show: {fresh_show_data.name}")
 
         self.tv_repository.update_show_attributes(
-            show_id=db_show.id,
+            db_show.id,
             name=fresh_show_data.name,
             overview=fresh_show_data.overview,
             year=fresh_show_data.year,
@@ -903,7 +903,7 @@ class TvService:
                 ]
 
                 self.tv_repository.update_season_attributes(
-                    season_id=existing_season.id,
+                    existing_season.id,
                     name=fresh_season_data.name,
                     overview=fresh_season_data.overview,
                 )
@@ -920,7 +920,7 @@ class TvService:
                         ]
 
                         self.tv_repository.update_episode_attributes(
-                            episode_id=existing_episode.id,
+                            existing_episode.id,
                             title=fresh_episode_data.title,
                             overview=fresh_episode_data.overview,
                         )
@@ -984,7 +984,7 @@ class TvService:
         :return: The updated Show object.
         """
         return self.tv_repository.update_show_attributes(
-            show_id=show.id, continuous_download=continuous_download
+            show.id, continuous_download=continuous_download
         )
 
     def get_import_candidates(

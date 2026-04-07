@@ -1,3 +1,5 @@
+from typing import TypedDict, Unpack, overload
+
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -24,6 +26,50 @@ from media_manager.tv.schemas import (
 )
 from media_manager.tv.schemas import Season as SeasonSchema
 from media_manager.tv.schemas import Show as ShowSchema
+
+
+class ShowAttributes(TypedDict, total=False):
+    name: str
+    overview: str
+    year: int | None
+    ended: bool
+    continuous_download: bool
+    imdb_id: str | None
+
+
+class SeasonAttributes(TypedDict, total=False):
+    name: str
+    overview: str
+
+
+class EpisodeAttributes(TypedDict, total=False):
+    title: str
+    overview: str | None
+
+
+@overload
+def _update_db_fields(db_object: Show, fields: ShowAttributes) -> bool: ...
+@overload
+def _update_db_fields(db_object: Season, fields: SeasonAttributes) -> bool: ...
+@overload
+def _update_db_fields(db_object: Episode, fields: EpisodeAttributes) -> bool: ...
+
+
+def _update_db_fields(
+    db_object: Show | Season | Episode,
+    fields: ShowAttributes | SeasonAttributes | EpisodeAttributes,
+) -> bool:
+    """
+    Updates the field of `db_object` with the values from `fields` if they
+    are different from the value in the `db_object`.
+    Returns True if any field was updated, False otherwise.
+    """
+    updated = False
+    for attr, value in fields.items():
+        if getattr(db_object, attr) != value:
+            setattr(db_object, attr, value)
+            updated = True
+    return updated
 
 
 class TvRepository:
@@ -145,9 +191,7 @@ class TvRepository:
             )
             self.db.add(db_show)
 
-        with self.db.begin():
-            pass  # Commit the transaction, without actually doing anything
-
+        self.db.commit()
         self.db.refresh(db_show)
         return ShowSchema.model_validate(db_show)
 
@@ -462,25 +506,10 @@ class TvRepository:
         return EpisodeSchema.model_validate(db_episode)
 
     def update_show_attributes(
-        self,
-        show_id: ShowId,
-        name: str | None = None,
-        overview: str | None = None,
-        year: int | None = None,
-        ended: bool | None = None,
-        continuous_download: bool | None = None,
-        imdb_id: str | None = None,
+        self, show_id: ShowId, /, **kwargs: Unpack[ShowAttributes]
     ) -> ShowSchema:
         """
         Update attributes of an existing show.
-
-        :param imdb_id: The new IMDb ID for the show.
-        :param continuous_download: The new continuous download status for the show.
-        :param show_id: The ID of the show to update.
-        :param name: The new name for the show.
-        :param overview: The new overview for the show.
-        :param year: The new year for the show.
-        :param ended: The new ended status for the show.
         :return: The updated ShowSchema object.
         :raises ShowNotFoundError: If the show is not found.
         """
@@ -488,43 +517,18 @@ class TvRepository:
         if not db_show:
             raise ShowNotFoundError(show_id)
 
-        updated = False
-        if name is not None and db_show.name != name:
-            db_show.name = name
-            updated = True
-        if overview is not None and db_show.overview != overview:
-            db_show.overview = overview
-            updated = True
-        if year is not None and db_show.year != year:
-            db_show.year = year
-            updated = True
-        if ended is not None and db_show.ended != ended:
-            db_show.ended = ended
-            updated = True
-        if (
-            continuous_download is not None
-            and db_show.continuous_download != continuous_download
-        ):
-            db_show.continuous_download = continuous_download
-            updated = True
-        if imdb_id is not None and db_show.imdb_id != imdb_id:
-            db_show.imdb_id = imdb_id
-            updated = True
-        if updated:
+        if _update_db_fields(db_show, kwargs):
             self.db.commit()
             self.db.refresh(db_show)
         return ShowSchema.model_validate(db_show)
 
     def update_season_attributes(
-        self, season_id: SeasonId, name: str | None = None, overview: str | None = None
+        self, season_id: SeasonId, /, **kwargs: Unpack[SeasonAttributes]
     ) -> SeasonSchema:
         """
         Update attributes of an existing season.
 
         :param season_id: The ID of the season to update.
-        :param name: The new name for the season.
-        :param overview: The new overview for the season.
-        :param external_id: The new external ID for the season.
         :return: The updated SeasonSchema object.
         :raises SeasonNotFoundError: If the season is not found.
         """
@@ -532,35 +536,19 @@ class TvRepository:
         if not db_season:
             raise SeasonNotFoundError(season_id)
 
-        updated = False
-        if name is not None and db_season.name != name:
-            db_season.name = name
-            updated = True
-        if overview is not None and db_season.overview != overview:
-            db_season.overview = overview
-            updated = True
-
-        if updated:
+        if _update_db_fields(db_season, kwargs):
             self.db.commit()
             self.db.refresh(db_season)
-            log.debug(
-                f"Updating existing season {db_season.number} for show {db_season.show.name}"
-            )
         return SeasonSchema.model_validate(db_season)
 
     def update_episode_attributes(
-        self,
-        episode_id: EpisodeId,
-        title: str | None = None,
-        overview: str | None = None,
+        self, episode_id: EpisodeId, /, **kwargs: Unpack[EpisodeAttributes]
     ) -> EpisodeSchema:
         """
         Update attributes of an existing episode.
 
         :param overview: Tje new overview for the episode.
         :param episode_id: The ID of the episode to update.
-        :param title: The new title for the episode.
-        :param external_id: The new external ID for the episode.
         :return: The updated EpisodeSchema object.
         :raises EpisodeNotFoundError: If the episode is not found.
         """
@@ -568,16 +556,7 @@ class TvRepository:
         if not db_episode:
             raise EpisodeNotFoundError(episode_id)
 
-        updated = False
-        if title is not None and db_episode.title != title:
-            db_episode.title = title
-            updated = True
-        if overview is not None and db_episode.overview != overview:
-            db_episode.overview = overview
-            updated = True
-
-        if updated:
+        if _update_db_fields(db_episode, kwargs):
             self.db.commit()
             self.db.refresh(db_episode)
-            log.debug(f"Updating existing episode {db_episode.number}")
         return EpisodeSchema.model_validate(db_episode)
