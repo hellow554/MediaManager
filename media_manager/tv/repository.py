@@ -2,7 +2,14 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
-from media_manager.exceptions import ConflictError, NotFoundError
+from media_manager.exceptions import (
+    ConflictError,
+    EpisodeNotFoundError,
+    ExternalShowNotFoundError,
+    SeasonNotFoundError,
+    SeasonWithinShowNotFoundError,
+    ShowNotFoundError,
+)
 from media_manager.torrent.models import Torrent
 from media_manager.torrent.schemas import Torrent as TorrentSchema
 from media_manager.torrent.schemas import TorrentId
@@ -36,23 +43,17 @@ class TvRepository:
 
         :param show_id: The ID of the show to retrieve.
         :return: A Show object if found.
-        :raises NotFoundError: If the show with the given ID is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises ShowNotFoundError: If the show with the given ID is not found.
         """
-        try:
-            stmt = (
-                select(Show)
-                .where(Show.id == show_id)
-                .options(joinedload(Show.seasons).joinedload(Season.episodes))
-            )
-            result = self.db.execute(stmt).unique().scalar_one_or_none()
-            if not result:
-                msg = f"Show with id {show_id} not found."
-                raise NotFoundError(msg)
-            return ShowSchema.model_validate(result)
-        except SQLAlchemyError:
-            log.exception(f"Database error while retrieving show {show_id}")
-            raise
+        stmt = (
+            select(Show)
+            .where(Show.id == show_id)
+            .options(joinedload(Show.seasons).joinedload(Season.episodes))
+        )
+        result = self.db.execute(stmt).unique().scalar_one_or_none()
+        if not result:
+            raise ShowNotFoundError(show_id)
+        return ShowSchema.model_validate(result)
 
     def get_show_by_external_id(
         self, external_id: int, metadata_provider: str
@@ -63,51 +64,34 @@ class TvRepository:
         :param external_id: The ID of the show to retrieve.
         :param metadata_provider: The metadata provider associated with the ID.
         :return: A Show object if found.
-        :raises NotFoundError: If the show with the given external ID and provider is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises ExternalShowNotFoundError: If the show with the given external ID and provider is not found.
         """
-        try:
-            stmt = (
-                select(Show)
-                .where(Show.external_id == external_id)
-                .where(Show.metadata_provider == metadata_provider)
-                .options(joinedload(Show.seasons).joinedload(Season.episodes))
-            )
-            result = self.db.execute(stmt).unique().scalar_one_or_none()
-            if not result:
-                msg = f"Show with external_id {external_id} and provider {metadata_provider} not found."
-                raise NotFoundError(msg)
-            return ShowSchema.model_validate(result)
-        except SQLAlchemyError:
-            log.exception(
-                f"Database error while retrieving show by external_id {external_id}",
-            )
-            raise
+        stmt = (
+            select(Show)
+            .where(Show.external_id == external_id)
+            .where(Show.metadata_provider == metadata_provider)
+            .options(joinedload(Show.seasons).joinedload(Season.episodes))
+        )
+        result = self.db.execute(stmt).unique().scalar_one_or_none()
+        if not result:
+            raise ExternalShowNotFoundError(external_id, metadata_provider)
+        return ShowSchema.model_validate(result)
 
     def get_shows(self) -> list[ShowSchema]:
         """
         Retrieve all shows from the database.
 
         :return: A list of Show objects.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
-            stmt = select(Show).options(
-                joinedload(Show.seasons).joinedload(Season.episodes)
-            )
-            results = self.db.execute(stmt).scalars().unique().all()
-            return [ShowSchema.model_validate(show) for show in results]
-        except SQLAlchemyError:
-            log.exception("Database error while retrieving all shows")
-            raise
+        stmt = select(Show).options(
+            joinedload(Show.seasons).joinedload(Season.episodes)
+        )
+        results = self.db.execute(stmt).scalars().unique().all()
+        return [ShowSchema.model_validate(show) for show in results]
 
     def get_total_downloaded_episodes_count(self) -> int:
-        try:
-            stmt = select(func.count(Episode.id)).select_from(Episode).join(EpisodeFile)
-            return self.db.execute(stmt).scalar_one_or_none()
-        except SQLAlchemyError:
-            log.exception("Database error while calculating downloaded episodes count")
-            raise
+        stmt = select(func.count(Episode.id)).select_from(Episode).join(EpisodeFile)
+        return self.db.execute(stmt).scalar_one_or_none() or 0
 
     def save_show(self, show: ShowSchema) -> ShowSchema:
         """
@@ -115,8 +99,7 @@ class TvRepository:
 
         :param show: The Show object to save.
         :return: The saved Show object.
-        :raises ValueError: If a show with the same primary key already exists (on insert).
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises ConflictError: If a show with the same primary key already exists (on insert).
         """
         db_show = self.db.get(Show, show.id) if show.id else None
 
@@ -182,14 +165,12 @@ class TvRepository:
         Delete a show by its ID.
 
         :param show_id: The ID of the show to delete.
-        :raises NotFoundError: If the show with the given ID is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises ShowNotFoundError: If the show with the given ID is not found.
         """
         try:
             show = self.db.get(Show, show_id)
             if not show:
-                msg = f"Show with id {show_id} not found."
-                raise NotFoundError(msg)
+                raise ShowNotFoundError(show_id)
             self.db.delete(show)
             self.db.commit()
         except SQLAlchemyError:
@@ -203,18 +184,12 @@ class TvRepository:
 
         :param season_id: The ID of the season to get.
         :return: A Season object.
-        :raises NotFoundError: If the season with the given ID is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises SeasonNotFoundError: If the season with the given ID is not found.
         """
-        try:
-            season = self.db.get(Season, season_id)
-            if not season:
-                msg = f"Season with id {season_id} not found."
-                raise NotFoundError(msg)
-            return SeasonSchema.model_validate(season)
-        except SQLAlchemyError:
-            log.exception(f"Database error while retrieving season {season_id}")
-            raise
+        season = self.db.get(Season, season_id)
+        if not season:
+            raise SeasonNotFoundError(season_id)
+        return SeasonSchema.model_validate(season)
 
     def get_episode(self, episode_id: EpisodeId) -> EpisodeSchema:
         """
@@ -222,36 +197,20 @@ class TvRepository:
 
         :param episode_id: The ID of the episode to get.
         :return: An Episode object.
-        :raises NotFoundError: If the episode with the given ID is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises EpisodeNotFoundError: If the episode with the given ID is not found.
         """
-        try:
-            episode = self.db.get(Episode, episode_id)
-            if not episode:
-                msg = f"Episode with id {episode_id} not found."
-                raise NotFoundError(msg)
-            return EpisodeSchema.model_validate(episode)
-        except SQLAlchemyError as e:
-            log.error(f"Database error while retrieving episode {episode_id}: {e}")
-            raise
+        episode = self.db.get(Episode, episode_id)
+        if not episode:
+            raise EpisodeNotFoundError(episode_id)
+        return EpisodeSchema.model_validate(episode)
 
     def get_season_by_episode(self, episode_id: EpisodeId) -> SeasonSchema:
-        try:
-            stmt = select(Season).join(Season.episodes).where(Episode.id == episode_id)
+        stmt = select(Season).join(Season.episodes).where(Episode.id == episode_id)
+        season = self.db.scalar(stmt)
+        if not season:
+            raise EpisodeNotFoundError(episode_id)
 
-            season = self.db.scalar(stmt)
-
-            if not season:
-                msg = f"Season not found for episode {episode_id}"
-                raise NotFoundError(msg)
-
-            return SeasonSchema.model_validate(season)
-
-        except SQLAlchemyError as e:
-            log.error(
-                f"Database error while retrieving season for episode {episode_id}: {e}"
-            )
-            raise
+        return SeasonSchema.model_validate(season)
 
     def get_season_by_number(self, season_number: int, show_id: ShowId) -> SeasonSchema:
         """
@@ -260,26 +219,18 @@ class TvRepository:
         :param season_number: The number of the season.
         :param show_id: The ID of the show.
         :return: A Season object.
-        :raises NotFoundError: If the season is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises SeasonWithinShowNotFoundError: If the season is not found.
         """
-        try:
-            stmt = (
-                select(Season)
-                .where(Season.show_id == show_id)
-                .where(Season.number == season_number)
-                .options(joinedload(Season.episodes), joinedload(Season.show))
-            )
-            result = self.db.execute(stmt).unique().scalar_one_or_none()
-            if not result:
-                msg = f"Season number {season_number} for show_id {show_id} not found."
-                raise NotFoundError(msg)
-            return SeasonSchema.model_validate(result)
-        except SQLAlchemyError:
-            log.exception(
-                f"Database error retrieving season {season_number} for show {show_id}"
-            )
-            raise
+        stmt = (
+            select(Season)
+            .where(Season.show_id == show_id)
+            .where(Season.number == season_number)
+            .options(joinedload(Season.episodes), joinedload(Season.show))
+        )
+        result = self.db.execute(stmt).unique().scalar_one_or_none()
+        if not result:
+            raise SeasonWithinShowNotFoundError(season_number, show_id)
+        return SeasonSchema.model_validate(result)
 
     def add_episode_file(self, episode_file: EpisodeFileSchema) -> EpisodeFileSchema:
         """
@@ -331,14 +282,13 @@ class TvRepository:
 
         :param show_id: The ID of the show to update.
         :param library: The library path to set for the show.
-        :raises NotFoundError: If the show with the given ID is not found.
+        :raises ShowNotFoundError: If the show with the given ID is not found.
         :raises SQLAlchemyError: If a database error occurs.
         """
         try:
             show = self.db.get(Show, show_id)
             if not show:
-                msg = f"Show with id {show_id} not found."
-                raise NotFoundError(msg)
+                raise ShowNotFoundError(show_id)
             show.library = library
             self.db.commit()
         except SQLAlchemyError:
@@ -354,19 +304,10 @@ class TvRepository:
 
         :param season_id: The ID of the season.
         :return: A list of EpisodeFile objects.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
-            stmt = (
-                select(EpisodeFile).join(Episode).where(Episode.season_id == season_id)
-            )
-            results = self.db.execute(stmt).scalars().all()
-            return [EpisodeFileSchema.model_validate(ef) for ef in results]
-        except SQLAlchemyError:
-            log.exception(
-                f"Database error retrieving episode files for season_id {season_id}"
-            )
-            raise
+        stmt = select(EpisodeFile).join(Episode).where(Episode.season_id == season_id)
+        results = self.db.execute(stmt).scalars().all()
+        return [EpisodeFileSchema.model_validate(ef) for ef in results]
 
     def get_episode_files_by_episode_id(
         self, episode_id: EpisodeId
@@ -376,17 +317,10 @@ class TvRepository:
 
         :param episode_id: The ID of the episode.
         :return: A list of EpisodeFile objects.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
-            stmt = select(EpisodeFile).where(EpisodeFile.episode_id == episode_id)
-            results = self.db.execute(stmt).scalars().all()
-            return [EpisodeFileSchema.model_validate(sf) for sf in results]
-        except SQLAlchemyError as e:
-            log.error(
-                f"Database error retrieving episode files for episode_id {episode_id}: {e}"
-            )
-            raise
+        stmt = select(EpisodeFile).where(EpisodeFile.episode_id == episode_id)
+        results = self.db.execute(stmt).scalars().all()
+        return [EpisodeFileSchema.model_validate(sf) for sf in results]
 
     def get_torrents_by_show_id(self, show_id: ShowId) -> list[TorrentSchema]:
         """
@@ -394,46 +328,36 @@ class TvRepository:
 
         :param show_id: The ID of the show.
         :return: A list of Torrent objects.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
-            stmt = (
-                select(Torrent)
-                .distinct()
-                .join(EpisodeFile, EpisodeFile.torrent_id == Torrent.id)
-                .join(Episode, Episode.id == EpisodeFile.episode_id)
-                .join(Season, Season.id == Episode.season_id)
-                .where(Season.show_id == show_id)
-            )
-            results = self.db.execute(stmt).scalars().unique().all()
-            return [TorrentSchema.model_validate(torrent) for torrent in results]
-        except SQLAlchemyError:
-            log.exception(f"Database error retrieving torrents for show_id {show_id}")
-            raise
+        stmt = (
+            select(Torrent)
+            .distinct()
+            .join(EpisodeFile, EpisodeFile.torrent_id == Torrent.id)
+            .join(Episode, Episode.id == EpisodeFile.episode_id)
+            .join(Season, Season.id == Episode.season_id)
+            .where(Season.show_id == show_id)
+        )
+        results = self.db.execute(stmt).scalars().unique().all()
+        return [TorrentSchema.model_validate(torrent) for torrent in results]
 
     def get_all_shows_with_torrents(self) -> list[ShowSchema]:
         """
         Retrieve all shows that are associated with a torrent, ordered alphabetically by show name.
 
         :return: A list of Show objects.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
-            stmt = (
-                select(Show)
-                .distinct()
-                .join(Season, Show.id == Season.show_id)
-                .join(Episode, Season.id == Episode.season_id)
-                .join(EpisodeFile, Episode.id == EpisodeFile.episode_id)
-                .join(Torrent, EpisodeFile.torrent_id == Torrent.id)
-                .options(joinedload(Show.seasons).joinedload(Season.episodes))
-                .order_by(Show.name)
-            )
-            results = self.db.execute(stmt).scalars().unique().all()
-            return [ShowSchema.model_validate(show) for show in results]
-        except SQLAlchemyError:
-            log.exception("Database error retrieving all shows with torrents")
-            raise
+        stmt = (
+            select(Show)
+            .distinct()
+            .join(Season, Show.id == Season.show_id)
+            .join(Episode, Season.id == Episode.season_id)
+            .join(EpisodeFile, Episode.id == EpisodeFile.episode_id)
+            .join(Torrent, EpisodeFile.torrent_id == Torrent.id)
+            .options(joinedload(Show.seasons).joinedload(Season.episodes))
+            .order_by(Show.name)
+        )
+        results = self.db.execute(stmt).scalars().unique().all()
+        return [ShowSchema.model_validate(show) for show in results]
 
     def get_seasons_by_torrent_id(self, torrent_id: TorrentId) -> list[SeasonNumber]:
         """
@@ -441,23 +365,16 @@ class TvRepository:
 
         :param torrent_id: The ID of the torrent.
         :return: A list of SeasonNumber objects.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
-            stmt = (
-                select(Season.number)
-                .distinct()
-                .join(Episode, Episode.season_id == Season.id)
-                .join(EpisodeFile, EpisodeFile.episode_id == Episode.id)
-                .where(EpisodeFile.torrent_id == torrent_id)
-            )
-            results = self.db.execute(stmt).scalars().unique().all()
-            return [SeasonNumber(x) for x in results]
-        except SQLAlchemyError:
-            log.exception(
-                f"Database error retrieving season numbers for torrent_id {torrent_id}"
-            )
-            raise
+        stmt = (
+            select(Season.number)
+            .distinct()
+            .join(Episode, Episode.season_id == Season.id)
+            .join(EpisodeFile, EpisodeFile.episode_id == Episode.id)
+            .where(EpisodeFile.torrent_id == torrent_id)
+        )
+        results = self.db.execute(stmt).scalars().unique().all()
+        return [SeasonNumber(x) for x in results]
 
     def get_episodes_by_torrent_id(self, torrent_id: TorrentId) -> list[EpisodeNumber]:
         """
@@ -465,25 +382,17 @@ class TvRepository:
 
         :param torrent_id: The ID of the torrent.
         :return: A list of EpisodeNumber objects.
-        :raises SQLAlchemyError: If a database error occurs.
         """
-        try:
-            stmt = (
-                select(Episode.number)
-                .join(EpisodeFile, EpisodeFile.episode_id == Episode.id)
-                .where(EpisodeFile.torrent_id == torrent_id)
-                .order_by(Episode.number)
-            )
+        stmt = (
+            select(Episode.number)
+            .join(EpisodeFile, EpisodeFile.episode_id == Episode.id)
+            .where(EpisodeFile.torrent_id == torrent_id)
+            .order_by(Episode.number)
+        )
 
-            episode_numbers = self.db.execute(stmt).scalars().all()
+        episode_numbers = self.db.execute(stmt).scalars().all()
 
-            return [EpisodeNumber(n) for n in sorted(set(episode_numbers))]
-
-        except SQLAlchemyError as e:
-            log.error(
-                f"Database error retrieving episodes for torrent_id {torrent_id}: {e}"
-            )
-            raise
+        return [EpisodeNumber(n) for n in sorted(set(episode_numbers))]
 
     def get_show_by_season_id(self, season_id: SeasonId) -> ShowSchema:
         """
@@ -491,24 +400,18 @@ class TvRepository:
 
         :param season_id: The ID of the season to retrieve the show for.
         :return: A Show object.
-        :raises NotFoundError: If the show for the given season ID is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises SeasonNotFoundError: If the show for the given season ID is not found.
         """
-        try:
-            stmt = (
-                select(Show)
-                .join(Season, Show.id == Season.show_id)
-                .where(Season.id == season_id)
-                .options(joinedload(Show.seasons).joinedload(Season.episodes))
-            )
-            result = self.db.execute(stmt).unique().scalar_one_or_none()
-            if not result:
-                msg = f"Show for season_id {season_id} not found."
-                raise NotFoundError(msg)
-            return ShowSchema.model_validate(result)
-        except SQLAlchemyError:
-            log.exception(f"Database error retrieving show by season_id {season_id}")
-            raise
+        stmt = (
+            select(Show)
+            .join(Season, Show.id == Season.show_id)
+            .where(Season.id == season_id)
+            .options(joinedload(Show.seasons).joinedload(Season.episodes))
+        )
+        result = self.db.execute(stmt).unique().scalar_one_or_none()
+        if not result:
+            raise SeasonNotFoundError(season_id)
+        return ShowSchema.model_validate(result)
 
     def add_season_to_show(
         self, show_id: ShowId, season_data: SeasonSchema
@@ -520,13 +423,11 @@ class TvRepository:
         :param show_id: The ID of the show to add the season to.
         :param season_data: The SeasonSchema object for the new season.
         :return: The added or existing SeasonSchema object.
-        :raises NotFoundError: If the show is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises ShowNotFoundError: If the show is not found.
         """
         db_show = self.db.get(Show, show_id)
         if not db_show:
-            msg = f"Show with id {show_id} not found."
-            raise NotFoundError(msg)
+            raise ShowNotFoundError(show_id)
 
         stmt = (
             select(Season)
@@ -570,13 +471,11 @@ class TvRepository:
         :param season_id: The ID of the season to add the episode to.
         :param episode_data: The EpisodeSchema object for the new episode.
         :return: The added or existing EpisodeSchema object.
-        :raises NotFoundError: If the season is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises SeasonNotFoundError: If the season is not found.
         """
         db_season = self.db.get(Season, season_id)
         if not db_season:
-            msg = f"Season with id {season_id} not found."
-            raise NotFoundError(msg)
+            raise SeasonNotFoundError(season_id)
 
         stmt = (
             select(Episode)
@@ -621,11 +520,11 @@ class TvRepository:
         :param year: The new year for the show.
         :param ended: The new ended status for the show.
         :return: The updated ShowSchema object.
+        :raises ShowNotFoundError: If the show is not found.
         """
         db_show = self.db.get(Show, show_id)
         if not db_show:
-            msg = f"Show with id {show_id} not found."
-            raise NotFoundError(msg)
+            raise ShowNotFoundError(show_id)
 
         updated = False
         if name is not None and db_show.name != name:
@@ -665,13 +564,11 @@ class TvRepository:
         :param overview: The new overview for the season.
         :param external_id: The new external ID for the season.
         :return: The updated SeasonSchema object.
-        :raises NotFoundError: If the season is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises SeasonNotFoundError: If the season is not found.
         """
         db_season = self.db.get(Season, season_id)
         if not db_season:
-            msg = f"Season with id {season_id} not found."
-            raise NotFoundError(msg)
+            raise SeasonNotFoundError(season_id)
 
         updated = False
         if name is not None and db_season.name != name:
@@ -703,13 +600,11 @@ class TvRepository:
         :param title: The new title for the episode.
         :param external_id: The new external ID for the episode.
         :return: The updated EpisodeSchema object.
-        :raises NotFoundError: If the episode is not found.
-        :raises SQLAlchemyError: If a database error occurs.
+        :raises EpisodeNotFoundError: If the episode is not found.
         """
         db_episode = self.db.get(Episode, episode_id)
         if not db_episode:
-            msg = f"Episode with id {episode_id} not found."
-            raise NotFoundError(msg)
+            raise EpisodeNotFoundError(episode_id)
 
         updated = False
         if title is not None and db_episode.title != title:

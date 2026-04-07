@@ -3,6 +3,8 @@ from fastapi.responses import JSONResponse
 from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 
+from media_manager.tv.schemas import EpisodeId, SeasonId, ShowId
+
 
 class RenameError(Exception):
     """Error when renaming something"""
@@ -33,6 +35,35 @@ class NotFoundError(MediaManagerError):
 
     def __init__(self, message: str = "The requested entity was not found.") -> None:
         super().__init__(message)
+
+
+class ShowNotFoundError(NotFoundError):
+    def __init__(self, show_id: ShowId) -> None:
+        super().__init__(f"Show with id {show_id} not found.")
+
+
+class ExternalShowNotFoundError(NotFoundError):
+    def __init__(self, external_id: int, metadata_provider: str) -> None:
+        super().__init__(
+            f"Show with external_id {external_id} and provider {metadata_provider} not found."
+        )
+
+
+class SeasonNotFoundError(NotFoundError):
+    def __init__(self, season_id: SeasonId) -> None:
+        super().__init__(f"Season with id {season_id} not fonud.")
+
+
+class SeasonWithinShowNotFoundError(NotFoundError):
+    def __init__(self, season_number: int, show_id: ShowId) -> None:
+        super().__init__(
+            f"Season number {season_number} for show_id {show_id} not found."
+        )
+
+
+class EpisodeNotFoundError(NotFoundError):
+    def __init__(self, episode_id: EpisodeId) -> None:
+        super().__init__(f"Episode with id {episode_id} not found.")
 
 
 class InvalidConfigError(MediaManagerError):
@@ -114,8 +145,8 @@ async def forbidden_error_handler(
     return JSONResponse(status_code=403, content={"detail": exc.message})
 
 
-async def conflict_error_handler(_request: Request, _exc: Exception) -> JSONResponse:
-    return JSONResponse(status_code=409, content={"detail": str(_exc)})
+async def conflict_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 async def unprocessable_entity_error_handler(
