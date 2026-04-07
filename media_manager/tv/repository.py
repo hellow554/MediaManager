@@ -13,7 +13,6 @@ from media_manager.exceptions import (
 from media_manager.torrent.models import Torrent
 from media_manager.torrent.schemas import Torrent as TorrentSchema
 from media_manager.torrent.schemas import TorrentId
-from media_manager.tv import log
 from media_manager.tv.models import Episode, EpisodeFile, Season, Show
 from media_manager.tv.schemas import Episode as EpisodeSchema
 from media_manager.tv.schemas import EpisodeFile as EpisodeFileSchema
@@ -86,7 +85,7 @@ class TvRepository:
         Retrieve a show by its ID, including seasons and episodes.
 
         :param show_id: The ID of the show to retrieve.
-        :return: A Show object if found.
+        :return: A ShowSchema object if found.
         :raises ShowNotFoundError: If the show with the given ID is not found.
         """
         stmt = (
@@ -107,7 +106,7 @@ class TvRepository:
 
         :param external_id: The ID of the show to retrieve.
         :param metadata_provider: The metadata provider associated with the ID.
-        :return: A Show object if found.
+        :return: A ShowSchema object if found.
         :raises ExternalShowNotFoundError: If the show with the given external ID and provider is not found.
         """
         stmt = (
@@ -125,7 +124,7 @@ class TvRepository:
         """
         Retrieve all shows from the database.
 
-        :return: A list of Show objects.
+        :return: A list of ShowSchema objects.
         """
         stmt = select(Show).options(
             joinedload(Show.seasons).joinedload(Season.episodes)
@@ -134,6 +133,11 @@ class TvRepository:
         return [ShowSchema.model_validate(show) for show in results]
 
     def get_total_downloaded_episodes_count(self) -> int:
+        """
+        Count downloaded episodes in the database.
+
+        :return: The total number of downloaded episodes.
+        """
         stmt = select(func.count(Episode.id)).select_from(Episode).join(EpisodeFile)
         return self.db.execute(stmt).scalar_one_or_none() or 0
 
@@ -141,9 +145,8 @@ class TvRepository:
         """
         Save a new show or update an existing one in the database.
 
-        :param show: The Show object to save.
-        :return: The saved Show object.
-        :raises ConflictError: If a show with the same primary key already exists (on insert).
+        :param show: The ShowSchema object to save.
+        :return: The saved ShowSchema object.
         """
         db_show = self.db.get(Show, show.id) if show.id else None
 
@@ -213,7 +216,7 @@ class TvRepository:
         Retrieve a season by its ID.
 
         :param season_id: The ID of the season to get.
-        :return: A Season object.
+        :return: A SeasonSchema object.
         :raises SeasonNotFoundError: If the season with the given ID is not found.
         """
         season = self.db.get(Season, season_id)
@@ -226,7 +229,7 @@ class TvRepository:
         Retrieve an episode by its ID.
 
         :param episode_id: The ID of the episode to get.
-        :return: An Episode object.
+        :return: An EpisodeSchema object.
         :raises EpisodeNotFoundError: If the episode with the given ID is not found.
         """
         episode = self.db.get(Episode, episode_id)
@@ -235,6 +238,13 @@ class TvRepository:
         return EpisodeSchema.model_validate(episode)
 
     def get_season_by_episode(self, episode_id: EpisodeId) -> SeasonSchema:
+        """
+        Retrieve the season for a given episode.
+
+        :param episode_id: The ID of the episode.
+        :return: A SeasonSchema object.
+        :raises EpisodeNotFoundError: If no season is found for the episode.
+        """
         stmt = select(Season).join(Season.episodes).where(Episode.id == episode_id)
         season = self.db.scalar(stmt)
         if not season:
@@ -248,7 +258,7 @@ class TvRepository:
 
         :param season_number: The number of the season.
         :param show_id: The ID of the show.
-        :return: A Season object.
+        :return: A SeasonSchema object.
         :raises SeasonWithinShowNotFoundError: If the season is not found.
         """
         stmt = (
@@ -266,8 +276,8 @@ class TvRepository:
         """
         Adds an episode file record to the database.
 
-        :param episode_file: The EpisodeFile object to add.
-        :return: The added EpisodeFile object.
+        :param episode_file: The EpisodeFileSchema object to add.
+        :return: The added EpisodeFileSchema object.
         :raises IntegrityError: If the record violates constraints.
         """
         db_model = EpisodeFile(**episode_file.model_dump())
@@ -309,7 +319,7 @@ class TvRepository:
         Retrieve all episode files for a given season ID.
 
         :param season_id: The ID of the season.
-        :return: A list of EpisodeFile objects.
+        :return: A list of EpisodeFileSchema objects.
         """
         stmt = select(EpisodeFile).join(Episode).where(Episode.season_id == season_id)
         results = self.db.execute(stmt).scalars().all()
@@ -322,7 +332,7 @@ class TvRepository:
         Retrieve all episode files for a given episode ID.
 
         :param episode_id: The ID of the episode.
-        :return: A list of EpisodeFile objects.
+        :return: A list of EpisodeFileSchema objects.
         """
         stmt = select(EpisodeFile).where(EpisodeFile.episode_id == episode_id)
         results = self.db.execute(stmt).scalars().all()
@@ -333,7 +343,7 @@ class TvRepository:
         Retrieve all torrents associated with a given show ID.
 
         :param show_id: The ID of the show.
-        :return: A list of Torrent objects.
+        :return: A list of TorrentSchema objects.
         """
         stmt = (
             select(Torrent)
@@ -350,7 +360,7 @@ class TvRepository:
         """
         Retrieve all shows that are associated with a torrent, ordered alphabetically by show name.
 
-        :return: A list of Show objects.
+        :return: A list of ShowSchema objects.
         """
         stmt = (
             select(Show)
@@ -405,7 +415,7 @@ class TvRepository:
         Retrieve a show by one of its season's ID.
 
         :param season_id: The ID of the season to retrieve the show for.
-        :return: A Show object.
+        :return: A ShowSchema object.
         :raises SeasonNotFoundError: If the show for the given season ID is not found.
         """
         stmt = (
@@ -547,7 +557,7 @@ class TvRepository:
         """
         Update attributes of an existing episode.
 
-        :param overview: Tje new overview for the episode.
+        :param overview: The new overview for the episode.
         :param episode_id: The ID of the episode to update.
         :return: The updated EpisodeSchema object.
         :raises EpisodeNotFoundError: If the episode is not found.
