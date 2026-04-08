@@ -3,7 +3,10 @@ import logging
 import mimetypes
 import re
 import shutil
+from collections.abc import Iterable, Iterator
+from itertools import chain
 from pathlib import Path, UnsupportedOperation
+from typing import overload
 
 import bencoder
 import patoolib
@@ -20,22 +23,17 @@ from media_manager.torrent.schemas import Torrent
 log = logging.getLogger(__name__)
 
 
-def list_files_recursively(path: Path = Path()) -> list[Path]:
-    files = list(path.glob("**/*"))
-    log.debug(f"Found {len(files)} entries via glob")
-    valid_files = []
-    for x in files:
+def _iterate_files_recursively(path: Path = Path()) -> Iterator[Path]:
+    for x in path.glob("**/*"):
         if x.is_dir():
             log.debug(f"'{x}' is a directory")
         elif x.is_symlink():
             log.debug(f"'{x}' is a symlink")
         else:
-            valid_files.append(x)
-    log.debug(f"Returning {len(valid_files)} files after filtering")
-    return valid_files
+            yield x
 
 
-def extract_archives(files: list) -> None:
+def _extract_archives(files: Iterator[Path]) -> None:
     archive_types = {
         "application/zip",
         "application/x-zip-compressedapplication/x-compressed",
@@ -48,6 +46,7 @@ def extract_archives(files: list) -> None:
         "application/x-gzip",
         "application/x-tar",
     }
+
     for file in files:
         file_type = mimetypes.guess_type(file)
         log.debug(f"File: {file}, Size: {file.stat().st_size} bytes, Type: {file_type}")
@@ -62,27 +61,37 @@ def extract_archives(files: list) -> None:
                 log.exception(f"Failed to extract archive {file}")
 
 
-def get_torrent_filepath(torrent: Torrent) -> Path:
+def _get_torrent_filepath(torrent: Torrent) -> Path:
     return MediaManagerConfig().misc.torrent_directory / torrent.title
 
 
-def import_file(target_file: Path, source_file: Path) -> None:
-    if target_file.exists():
-        target_file.unlink()
+def import_file(*, target: Path, source: Path) -> None:
+    if target.exists():
+        target.unlink()
 
     try:
-        target_file.hardlink_to(source_file)
+        target.hardlink_to(source)
     except FileExistsError:
-        log.exception(f"File already exists at {target_file}.")
+        log.exception(f"File already exists at {target}.")
     except (OSError, UnsupportedOperation, NotImplementedError):
         log.exception(
-            f"Failed to create hardlink from {source_file} to {target_file}. Falling back to copying the file."
+            f"Failed to create hardlink from {source} to {target}. Falling back to copying the file."
         )
-        shutil.copy(src=source_file, dst=target_file)
+        shutil.copy(src=source, dst=target)
+
+
+@overload
+def get_files_for_import(
+    *, torrent: Torrent
+) -> tuple[list[Path], list[Path], list[Path]]: ...
+@overload
+def get_files_for_import(
+    *, directory: Path
+) -> tuple[list[Path], list[Path], list[Path]]: ...
 
 
 def get_files_for_import(
-    torrent: Torrent | None = None, directory: Path | None = None
+    *, torrent: Torrent | None = None, directory: Path | None = None
 ) -> tuple[list[Path], list[Path], list[Path]]:
     """
     Extracts all files from the torrent download directory, including extracting archives.
@@ -90,21 +99,22 @@ def get_files_for_import(
     """
     if torrent:
         log.info(f"Importing torrent {torrent}")
-        search_directory = get_torrent_filepath(torrent=torrent)
+        search_directory = _get_torrent_filepath(torrent=torrent)
     elif directory:
         log.info(f"Importing files from directory {directory}")
         search_directory = directory
     else:
         msg = "Either torrent or directory must be provided."
-        raise ValueError(msg)
+        raise TypeError(msg)
 
-    all_files: list[Path] = list_files_recursively(path=search_directory)
-    log.debug(f"Found {len(all_files)} files downloaded by the torrent")
-    extract_archives(all_files)
-    all_files = list_files_recursively(path=search_directory)
+    # step 1, extract possible archives
+    _extract_archives(_iterate_files_recursively(search_directory))
+    # step 2, find all files again (include the extracted ones)
+    all_files = list(_iterate_files_recursively(search_directory))
 
-    video_files: list[Path] = []
-    subtitle_files: list[Path] = []
+    # search for video and subtitle files, collect them into a list and return it
+    video_files = []
+    subtitle_files = []
     for file in all_files:
         file_type, _ = mimetypes.guess_type(str(file))
         if file_type is not None:
@@ -119,13 +129,10 @@ def get_files_for_import(
                     f"File is neither a video nor a subtitle, will not be imported: {file}"
                 )
 
-    log.info(
-        f"Found {len(all_files)} files ({len(video_files)} video files, {len(subtitle_files)} subtitle files) for further processing."
-    )
     return video_files, subtitle_files, all_files
 
 
-def get_torrent_hash(torrent: IndexerQueryResult) -> str:
+def get_torrent_hash(torrent: IndexerQueryResult, /) -> str:
     """
     Helper method to get the torrent hash from the torrent object.
 
@@ -155,31 +162,24 @@ def get_torrent_hash(torrent: IndexerQueryResult) -> str:
             final_url = follow_redirects_to_final_torrent_url(
                 initial_url=torrent.download_url,
                 session=requests.Session(),
-                timeout=MediaManagerConfig().indexers.prowlarr.timeout_seconds,
+                timeout=MediaManagerConfig().indexers.prowlarr.timeout_seconds,  # FIXME: prowlarr is hardcoded here?!
             )
             return torf.Magnet.from_string(final_url).infohash
-        except Exception:
-            log.exception("Failed to download torrent file")
-            raise
 
         # saving the torrent file
         torrent_filepath.write_bytes(torrent_content)
 
         # parsing info hash
         log.debug(f"parsing torrent file: {torrent.download_url}")
-        try:
-            decoded_content = bencoder.decode(torrent_content)
-            torrent_hash = hashlib.sha1(  # noqa: S324
-                bencoder.encode(decoded_content[b"info"])
-            ).hexdigest()
-        except Exception:
-            log.exception("Failed to decode torrent file")
-            raise
+        decoded_content = bencoder.decode(torrent_content)
+        torrent_hash = hashlib.sha1(  # noqa: S324
+            bencoder.encode(decoded_content[b"info"])
+        ).hexdigest()
 
     return torrent_hash
 
 
-def remove_special_characters(filename: str) -> str:
+def remove_special_characters(filename: str, /) -> str:
     """
     Removes special characters from the filename to ensure it works with Jellyfin.
 
@@ -193,7 +193,7 @@ def remove_special_characters(filename: str) -> str:
     return sanitized.strip(" .")
 
 
-def remove_special_chars_and_parentheses(title: str) -> str:
+def remove_special_chars_and_parentheses(title: str, /) -> str:
     """
     Removes special characters and bracketed information from the title.
 
@@ -217,25 +217,27 @@ def remove_special_chars_and_parentheses(title: str) -> str:
     return re.sub(r"\s+", " ", sanitized).strip()
 
 
-def get_importable_media_directories(path: Path) -> list[Path]:
-    libraries = [
-        *MediaManagerConfig().misc.movie_libraries,
-        *MediaManagerConfig().misc.tv_libraries,
-    ]
+def get_importable_media_directories(path: Path, /) -> Iterable[Path]:
+    libraries = chain(
+        MediaManagerConfig().misc.movie_libraries,
+        MediaManagerConfig().misc.tv_libraries,
+    )
 
     library_paths = {Path(library.path).absolute() for library in libraries}
 
-    unfiltered_dirs = [d for d in path.glob("*") if d.is_dir()]
+    unfiltered_dirs = (d for d in path.glob("*") if d.is_dir())
 
-    return [
+    return (
         media_dir
         for media_dir in unfiltered_dirs
         if media_dir.absolute() not in library_paths
         and not media_dir.name.startswith(".")
-    ]
+    )
 
 
-def extract_external_id_from_string(input_string: str) -> tuple[str | None, int | None]:
+def extract_external_id_from_string(
+    input_string: str, /
+) -> tuple[str, int] | tuple[None, None]:
     """
     Extracts an external ID (tmdb/tvdb ID) from the given string.
 

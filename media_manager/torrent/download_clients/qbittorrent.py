@@ -104,7 +104,7 @@ class QbittorrentDownloadClient(AbstractDownloadClient):
         :param indexer_result: The indexer query result of the torrent file to download.
         :return: The torrent object with calculated hash and initial status.
         """
-        torrent_hash = get_torrent_hash(torrent=indexer_result)
+        torrent_hash = get_torrent_hash(indexer_result)
         answer = None
 
         try:

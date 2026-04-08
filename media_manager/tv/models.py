@@ -35,7 +35,7 @@ class Season(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
     show_id: Mapped[UUID] = mapped_column(
-        ForeignKey(column="show.id", ondelete="CASCADE"),
+        ForeignKey("show.id", ondelete="CASCADE"),
     )
     number: Mapped[int]
     external_id: Mapped[int]
@@ -70,10 +70,10 @@ class EpisodeFile(Base):
     __tablename__ = "episode_file"
     __table_args__ = (PrimaryKeyConstraint("episode_id", "file_path_suffix"),)
     episode_id: Mapped[UUID] = mapped_column(
-        ForeignKey(column="episode.id", ondelete="CASCADE"),
+        ForeignKey("episode.id", ondelete="CASCADE"),
     )
     torrent_id: Mapped[UUID | None] = mapped_column(
-        ForeignKey(column="torrent.id", ondelete="SET NULL"),
+        ForeignKey("torrent.id", ondelete="SET NULL"),
     )
     file_path_suffix: Mapped[str]
     quality: Mapped[Quality]

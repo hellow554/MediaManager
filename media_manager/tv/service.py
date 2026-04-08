@@ -629,7 +629,7 @@ class TvService:
                 target_subtitle_file = target_file_name.with_suffix(
                     f".{language_code}.srt"
                 )
-                import_file(target_file=target_subtitle_file, source_file=subtitle_file)
+                import_file(target=target_subtitle_file, source=subtitle_file)
             else:
                 log.debug(
                     f"Didn't find any pattern {subtitle_pattern} in subtitle file: {subtitle_file.name}"
@@ -639,7 +639,7 @@ class TvService:
         for file in video_files:
             if re.search(pattern, file.name, re.IGNORECASE):
                 target_video_file = target_file_name.with_suffix(file.suffix)
-                import_file(target_file=target_video_file, source_file=file)
+                import_file(target=target_video_file, source=file)
                 return True
         else:
             msg = f"Could not find any video file for episode {episode_number} of show {show.name} S{season.number}"
@@ -722,7 +722,7 @@ class TvService:
                 target_subtitle_file = target_file_name.with_suffix(
                     f".{language_code}.srt"
                 )
-                import_file(target_file=target_subtitle_file, source_file=subtitle_file)
+                import_file(target=target_subtitle_file, source=subtitle_file)
             else:
                 log.debug(
                     f"Didn't find any pattern {subtitle_pattern} in subtitle file: {subtitle_file.name}"
@@ -734,7 +734,7 @@ class TvService:
         for file in video_files:
             if re.search(pattern, file.name, re.IGNORECASE):
                 target_video_file = target_file_name.with_suffix(file.suffix)
-                import_file(target_file=target_video_file, source_file=file)
+                import_file(target=target_video_file, source=file)
                 found_video = True
                 break
 
@@ -1106,9 +1106,7 @@ class TvService:
                     f"Error initializing metadata provider {show.metadata_provider} for show {show.name}"
                 )
                 continue
-            updated_show = self.update_show_metadata(
-                db_show=show, metadata_provider=metadata_provider
-            )
+            updated_show = self.update_show_metadata(show, metadata_provider)
             if updated_show:
                 log.debug("Updated show metadata", extra={"show": updated_show.name})
             else:

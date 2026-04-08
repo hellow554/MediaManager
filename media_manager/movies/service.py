@@ -463,7 +463,7 @@ class MovieService:
             target_video_file = (
                 movie_root_path / f"{movie_file_name}{video_files[0].suffix}"
             )
-            import_file(target_file=target_video_file, source_file=video_files[0])
+            import_file(target=target_video_file, source=video_files[0])
             success = True
 
         # import subtitles
@@ -480,7 +480,7 @@ class MovieService:
             target_subtitle_file = (
                 movie_root_path / f"{movie_file_name}.{language_code}.srt"
             )
-            import_file(target_file=target_subtitle_file, source_file=subtitle_file)
+            import_file(target=target_subtitle_file, source=subtitle_file)
 
         return success
 

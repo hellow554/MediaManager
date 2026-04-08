@@ -5,20 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from media_manager.auth.users import current_active_user, current_superuser
 from media_manager.config import LibraryItem, MediaManagerConfig
 from media_manager.exceptions import MediaAlreadyExistsError, NotFoundError
-from media_manager.indexer.schemas import (
-    IndexerQueryResult,
-    IndexerQueryResultId,
-)
+from media_manager.indexer.schemas import IndexerQueryResult, IndexerQueryResultId
 from media_manager.metadataProvider.dependencies import metadata_provider_dep
 from media_manager.metadataProvider.schemas import MetaDataProviderSearchResult
 from media_manager.schemas import MediaImportSuggestion
 from media_manager.torrent.schemas import Torrent
 from media_manager.torrent.utils import get_importable_media_directories
-from media_manager.tv.dependencies import (
-    season_dep,
-    show_dep,
-    tv_service_dep,
-)
+from media_manager.tv.dependencies import season_dep, show_dep, tv_service_dep
 from media_manager.tv.schemas import (
     PublicEpisodeFile,
     PublicShow,
@@ -35,30 +28,24 @@ router = APIRouter()
 # -----------------------------------------------------------------------------
 
 
-@router.get(
-    "/search",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/search", dependencies=[Depends(current_active_user)])
 def search_metadata_providers_for_a_show(
     tv_service: tv_service_dep, query: str, metadata_provider: metadata_provider_dep
 ) -> list[MetaDataProviderSearchResult]:
     """
     Search for a show on the configured metadata provider.
     """
-    return tv_service.search_for_show(query=query, metadata_provider=metadata_provider)
+    return tv_service.search_for_show(query, metadata_provider)
 
 
-@router.get(
-    "/recommended",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/recommended", dependencies=[Depends(current_active_user)])
 def get_recommended_shows(
     tv_service: tv_service_dep, metadata_provider: metadata_provider_dep
 ) -> list[MetaDataProviderSearchResult]:
     """
     Get a list of recommended/popular shows from the metadata provider.
     """
-    return tv_service.get_popular_shows(metadata_provider=metadata_provider)
+    return tv_service.get_popular_shows(metadata_provider)
 
 
 # -----------------------------------------------------------------------------
@@ -66,18 +53,14 @@ def get_recommended_shows(
 # -----------------------------------------------------------------------------
 
 
-@router.get(
-    "/importable",
-    status_code=status.HTTP_200_OK,
-    dependencies=[Depends(current_superuser)],
-)
+@router.get("/importable", dependencies=[Depends(current_superuser)])
 def get_all_importable_shows(
     tv_service: tv_service_dep, metadata_provider: metadata_provider_dep
 ) -> list[MediaImportSuggestion]:
     """
     Get a list of unknown shows that were detected in the TV directory and are importable.
     """
-    return tv_service.get_importable_tv_shows(metadata_provider=metadata_provider)
+    return tv_service.get_importable_tv_shows(metadata_provider)
 
 
 @router.post(
@@ -96,9 +79,7 @@ def import_detected_show(
         MediaManagerConfig().misc.tv_directory
     ):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No such directory")
-    tv_service.import_existing_tv_show(
-        tv_show=tv_show, source_directory=source_directory
-    )
+    tv_service.import_existing_tv_show(tv_show, source_directory)
 
 
 # -----------------------------------------------------------------------------
@@ -106,15 +87,12 @@ def import_detected_show(
 # -----------------------------------------------------------------------------
 
 
-@router.get(
-    "/shows",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/shows", dependencies=[Depends(current_active_user)])
 def get_all_shows(tv_service: tv_service_dep) -> list[Show]:
     """
     Get all shows in the library.
     """
-    return tv_service.get_all_shows()
+    return list(tv_service.get_all_shows())
 
 
 @router.post(
@@ -138,24 +116,15 @@ def add_a_show(
     Add a new show to the library.
     """
     try:
-        show = tv_service.add_show(
-            external_id=show_id,
-            metadata_provider=metadata_provider,
-            language=language,
-        )
+        show = tv_service.add_show(show_id, metadata_provider, language)
     except MediaAlreadyExistsError:
-        show = tv_service.get_show_by_external_id(
-            show_id, metadata_provider=metadata_provider.name
-        )
+        show = tv_service.get_show_by_external_id(show_id, metadata_provider.name)
         if not show:
             raise NotFoundError from MediaAlreadyExistsError
     return show
 
 
-@router.get(
-    "/shows/torrents",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/shows/torrents", dependencies=[Depends(current_active_user)])
 def get_shows_with_torrents(tv_service: tv_service_dep) -> list[RichShowTorrent]:
     """
     Get all shows that are associated with torrents.
@@ -163,10 +132,7 @@ def get_shows_with_torrents(tv_service: tv_service_dep) -> list[RichShowTorrent]
     return tv_service.get_all_shows_with_torrents()
 
 
-@router.get(
-    "/shows/libraries",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/shows/libraries", dependencies=[Depends(current_active_user)])
 def get_available_libraries() -> list[LibraryItem]:
     """
     Get available TV libraries from configuration.
@@ -179,15 +145,12 @@ def get_available_libraries() -> list[LibraryItem]:
 # -----------------------------------------------------------------------------
 
 
-@router.get(
-    "/shows/{show_id}",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/shows/{show_id}", dependencies=[Depends(current_active_user)])
 def get_a_show(show: show_dep, tv_service: tv_service_dep) -> PublicShow:
     """
     Get details for a specific show.
     """
-    return tv_service.get_public_show_by_id(show=show)
+    return tv_service.get_public_show_by_id(show)
 
 
 @router.delete(
@@ -204,30 +167,22 @@ def delete_a_show(
     """
     Delete a show from the library.
     """
-    tv_service.delete_show(
-        show=show,
-        delete_files_on_disk=delete_files_on_disk,
-        delete_torrents=delete_torrents,
-    )
+    tv_service.delete_show(show, delete_files_on_disk, delete_torrents)
 
 
-@router.post(
-    "/shows/{show_id}/metadata",
-    dependencies=[Depends(current_active_user)],
-)
+@router.post("/shows/{show_id}/metadata", dependencies=[Depends(current_active_user)])
 def update_shows_metadata(
     show: show_dep, tv_service: tv_service_dep, metadata_provider: metadata_provider_dep
 ) -> PublicShow:
     """
     Update a show's metadata from the provider.
     """
-    tv_service.update_show_metadata(db_show=show, metadata_provider=metadata_provider)
-    return tv_service.get_public_show_by_id(show=show)
+    tv_service.update_show_metadata(show, metadata_provider)
+    return tv_service.get_public_show_by_id(show)
 
 
 @router.post(
-    "/shows/{show_id}/continuousDownload",
-    dependencies=[Depends(current_superuser)],
+    "/shows/{show_id}/continuousDownload", dependencies=[Depends(current_superuser)]
 )
 def set_continuous_download(
     show: show_dep, tv_service: tv_service_dep, continuous_download: bool
@@ -235,10 +190,8 @@ def set_continuous_download(
     """
     Toggle whether future seasons of a show will be automatically downloaded.
     """
-    tv_service.set_show_continuous_download(
-        show=show, continuous_download=continuous_download
-    )
-    return tv_service.get_public_show_by_id(show=show)
+    tv_service.set_show_continuous_download(show, continuous_download)
+    return tv_service.get_public_show_by_id(show)
 
 
 @router.post(
@@ -246,27 +199,20 @@ def set_continuous_download(
     dependencies=[Depends(current_superuser)],
     status_code=status.HTTP_204_NO_CONTENT,
 )
-def set_library(
-    show: show_dep,
-    tv_service: tv_service_dep,
-    library: str,
-) -> None:
+def set_library(show: show_dep, tv_service: tv_service_dep, library: str) -> None:
     """
     Set the library path for a Show.
     """
-    tv_service.set_show_library(show=show, library=library)
+    tv_service.set_show_library(show, library)
     return
 
 
-@router.get(
-    "/shows/{show_id}/torrents",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/shows/{show_id}/torrents", dependencies=[Depends(current_active_user)])
 def get_a_shows_torrents(show: show_dep, tv_service: tv_service_dep) -> RichShowTorrent:
     """
     Get torrents associated with a specific show.
     """
-    return tv_service.get_torrents_for_show(show=show)
+    return tv_service.get_torrents_for_show(show)
 
 
 # -----------------------------------------------------------------------------
@@ -274,10 +220,7 @@ def get_a_shows_torrents(show: show_dep, tv_service: tv_service_dep) -> RichShow
 # -----------------------------------------------------------------------------
 
 
-@router.get(
-    "/seasons/{season_id}",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/seasons/{season_id}", dependencies=[Depends(current_active_user)])
 def get_season(season: season_dep) -> Season:
     """
     Get details for a specific season.
@@ -285,17 +228,14 @@ def get_season(season: season_dep) -> Season:
     return season
 
 
-@router.get(
-    "/seasons/{season_id}/files",
-    dependencies=[Depends(current_active_user)],
-)
+@router.get("/seasons/{season_id}/files", dependencies=[Depends(current_active_user)])
 def get_episode_files(
     season: season_dep, tv_service: tv_service_dep
 ) -> list[PublicEpisodeFile]:
     """
     Get episode files associated with a specific season.
     """
-    return tv_service.get_public_episode_files_by_season_id(season=season)
+    return tv_service.get_public_episode_files_by_season_id(season)
 
 
 # -----------------------------------------------------------------------------
@@ -319,9 +259,7 @@ def get_torrents_for_a_season(
     Default season_number is 1 because it often returns multi-season torrents.
     """
     return tv_service.get_all_available_torrents_for_a_season(
-        season_number=season_number,
-        show_id=show_id,
-        search_query_override=search_query_override,
+        season_number, show_id, search_query_override
     )
 
 
@@ -340,9 +278,7 @@ def download_a_torrent(
     Trigger a download for a specific torrent.
     """
     return tv_service.download_torrent(
-        public_indexer_result_id=public_indexer_result_id,
-        show_id=show_id,
-        override_show_file_path_suffix=override_file_path_suffix,
+        public_indexer_result_id, show_id, override_file_path_suffix
     )
 
 

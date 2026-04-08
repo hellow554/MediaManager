@@ -49,7 +49,7 @@ def get_season_by_id(
     tv_service: tv_service_dep,
     season_id: SeasonId = Path(..., description="The ID of the season"),
 ) -> Season:
-    return tv_service.get_season(season_id=season_id)
+    return tv_service.get_season(season_id)
 
 
 season_dep = Annotated[Season, Depends(get_season_by_id)]
