@@ -1,9 +1,8 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Path
+from fastapi import Depends, Path
 
 from media_manager.database import DbSessionDependency
-from media_manager.exceptions import NotFoundError
 from media_manager.indexer.dependencies import indexer_service_dep
 from media_manager.notification.dependencies import notification_service_dep
 from media_manager.torrent.dependencies import torrent_service_dep
@@ -40,14 +39,7 @@ def get_show_by_id(
     tv_service: tv_service_dep,
     show_id: ShowId = Path(..., description="The ID of the show"),
 ) -> Show:
-    try:
-        show = tv_service.get_show_by_id(show_id)
-    except NotFoundError:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Show with ID {show_id} not found.",
-        ) from None
-    return show
+    return tv_service.get_show_by_id(show_id)
 
 
 show_dep = Annotated[Show, Depends(get_show_by_id)]
@@ -57,14 +49,7 @@ def get_season_by_id(
     tv_service: tv_service_dep,
     season_id: SeasonId = Path(..., description="The ID of the season"),
 ) -> Season:
-    try:
-        season = tv_service.get_season(season_id=season_id)
-    except NotFoundError:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Season with ID {season_id} not found.",
-        ) from None
-    return season
+    return tv_service.get_season(season_id=season_id)
 
 
 season_dep = Annotated[Season, Depends(get_season_by_id)]
